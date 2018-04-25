@@ -1,0 +1,27 @@
+﻿//SCOPESCRIPT [(Comment)] PATHIN_Input1={in:CosmosPath:Input1} [PATHIN_Input2={in:CosmosPath:Input2}] PARAM_ScopeCode=(ScopeCode) [PARAM_Schema1=(Schema1)] [PARAM_Schema2=(Schema2)] PATHOUT_Output1={out:CosmosPath:Output1}.(Output1Extension:enum,tsv,ss:default,tsv) [PARAM_Output1Param=(Output1Param)] PATHOUT_Output2={out:CosmosPath:Output2}.(Output2Extension:enum,tsv,ss:default,tsv) [PARAM_Output2Param=(Output2Param)] VC=(VC:default,vc://cosmos09/relevance) PARAM_ExtractParam=(ExtractParam:default,"-silent") PARAM_CSharpCode=(CSharpCode:default,//) PARAM_Directive1=(Directive1:default,//) PARAM_Directive2=(Directive2:default,//) RETRIES=0
+//Description: Cosmos stream Processor (2 Inputs). 1. The RowSet names of 2 inputs are In1,In2, 2 outputs are Out1,Out2. 2. If only 1 output is needed. Out2 don't need to be specified in the code. It will output the line count of In1 by default.3. if the output is sstream, FileExtension should be "ss" and SStreamOutParam should not be empty. 4. input stream doesn't support multiple streams in a single input, such as "streamPath1,streamPath2". Due to the stream path variable check.
+
+REFERENCE "Microsoft.Knowledge.dll";
+REFERENCE "Microsoft.Live.Json.dll";
+REFERENCE "Microsoft.Scope.dll";
+
+searchlog = 
+    EXTRACT Name : string, 
+            _p : string,
+            _O : string
+    FROM "/local/users/wuxiangl/peoplepersonnolimit.tsv"
+    USING DefaultTextExtractor();
+
+T1 =
+    SELECT  
+         _p  AS wokao,
+         MyHelper.SecondsToMinutes(Name) AS Name
+    FROM searchlog; 
+        
+
+OUTPUT T1
+    TO "/local/users/wuxiangl/total9.tsv"
+      USING DefaultTextOutputter();
+
+
+
