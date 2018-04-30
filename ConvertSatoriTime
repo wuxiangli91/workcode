@@ -1,0 +1,47 @@
+using Microsoft.Bing.EntityPlatform.Common.Satori;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+
+namespace chahacode
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            string path = @"D:\code\chahacode\chahacode\triple_data.tsv";
+            string[] lines = System.IO.File.ReadAllLines(path);
+            StreamWriter sr = File.CreateText(@"D:\code\chahacode\chahacode\ha.tsv");
+            List<Tuple<string, string, string>> datas = new List<Tuple<string, string, string>>();
+            foreach (string line in lines)
+            {
+                string str = line;
+                string[] arrs = line.Split('\t');
+                if(arrs[2].Contains("#")&&!arrs[2].Contains("-"))
+                {
+                    SatoriDateTime st;
+                    if (SatoriDateTime.TryParse(arrs[2], out st))
+                    {
+                        DateTime dt = st.ToDateTime();
+                        int myyear = dt.Year;
+                        Console.WriteLine(dt.Year);
+                        arrs[2] = dt.Year.ToString();
+                       
+                    }
+
+                }
+                string tmp = arrs[0] + "\t" + arrs[1] + "\t" + arrs[2];
+                sr.WriteLine(tmp);
+            }
+
+            sr.Close();
+
+
+
+
+
+        }
+    }
+}
