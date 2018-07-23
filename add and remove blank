@@ -24,7 +24,7 @@ namespace addblank
                 return false;
         }
 
-        public static void RemoveBlank(ref string query, List<int> removedList, List<int> addedList, List<int> addedListAdditional, List<SlotIndexInfoV1> slotIndexInfos)
+        public static void RemoveBlank(ref string query, List<int> removedList, List<int> addedListAdditional, List<SlotIndexInfoV1> slotIndexInfos)
         {
             string queryTmp = "";
             for (int i = 0; i < query.Length; i++)
@@ -36,7 +36,6 @@ namespace addblank
                 queryTmp += query[i];
             }
             query = queryTmp;
-
             foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
             {
                 int idxStart = 0, idxEnd = 0;
@@ -48,7 +47,6 @@ namespace addblank
                 slotIndexInfo.StartIndex -= idxStart;
                 slotIndexInfo.EndIndex -= idxEnd;
             }
-
             queryTmp = "";
             for (int i = 0; i < removedList.Count; i++)
             {
@@ -61,26 +59,23 @@ namespace addblank
 
                 query = queryTmp;
             }
-
-
-
-
         }
         public static void AddBlank(ref string query, ref List<int> removedList, ref List<int> addedList, ref List<int> addedListAdditional, List<SlotIndexInfoV1> slotIndexInfos)
         {
-
             string preQuery = "";
-            List<int> indexes = new List<int>();
-            List<int> indexes1 = new List<int>();
             //remove redundant blank
-
             for (int i = 0; i < query.Length; i++)
             {
-               
+
                 if (query[i] == ' ' && (i - 1 >= 0 && i + 1 < query.Length && (!IsChinese(query[i + 1]) && query[i + 1] != ' ') && (!IsChinese(query[i - 1]) && query[i - 1] != ' ')) || query[i] != ' ')
                     preQuery += query[i];
                 else
-                    removedList.Add(i);
+                {
+                    if (i > 0 && query[i - 1] == ' ')
+                        removedList.Add(i);
+                    else
+                        preQuery += query[i];
+                }
 
             }
             query = preQuery;
@@ -95,13 +90,12 @@ namespace addblank
                 slotIndexInfo.StartIndex -= idxStart;
                 slotIndexInfo.EndIndex -= idxEnd;
             }
-           
-
             //add blank
             string queryBlank = "";
             for (int i = 0; i < query.Length; i++)
             {
-                if (i + 1 < query.Length && (IsChinese(query[i]) || (!IsChinese(query[i]) && IsChinese(query[i + 1]))))
+                //if (i + 1 < query.Length && (IsChinese(query[i])&&query[i+1]!=' ' || (!IsChinese(query[i]) && IsChinese(query[i + 1]))))
+                if(IsChinese(query[i])&&(i+1<query.Length&&query[i+1]!=' ')||(query[i]!=' '&& !IsChinese(query[i])&&(i+1<query.Length&&IsChinese(query[i+1]))))
                 {
                     queryBlank += query[i] + " ";
                     addedList.Add(i);
@@ -110,9 +104,6 @@ namespace addblank
                 else
                     queryBlank += query[i];
             }
-
-         
-
             foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
             {
                 int idxStart = 0, idxEnd = 0;
@@ -126,13 +117,14 @@ namespace addblank
             }
             query = queryBlank;
         }
+
         static void Main(string[] args)
         {
             string query1 = @"今天  北京天气  怎么样";
             string query2 = @"today beijing天气啊 怎么样";
-            SlotIndexInfoV1 slot1 = new SlotIndexInfoV1(0, 1);
-            SlotIndexInfoV1 slot2 = new SlotIndexInfoV1(5, 6);
-            SlotIndexInfoV1 slot3 = new SlotIndexInfoV1(0, 4);
+            SlotIndexInfoV1 slot1 = new SlotIndexInfoV1(0, 2);
+            SlotIndexInfoV1 slot2 = new SlotIndexInfoV1(5, 10);
+            SlotIndexInfoV1 slot3 = new SlotIndexInfoV1(0, 5);
             SlotIndexInfoV1 slot4 = new SlotIndexInfoV1(7, 13);
             List<SlotIndexInfoV1> ans = new List<SlotIndexInfoV1>();
             ans.Add(slot1);
@@ -140,14 +132,16 @@ namespace addblank
             //ans.Add(slot3);
             //ans.Add(slot4);
 
-            List<int> removedList = new List<int>();
-            List<int> addedList = new List<int>();
-            List<int> addedListAdditional = new List<int>();
+            
             //additionalSpace.Add(5);
             //additionalSpace.Add(15);
-            Program.AddBlank(ref query1, ref removedList, ref addedList, ref addedListAdditional, ans);
-            Program.RemoveBlank(ref query1, removedList, addedList, addedListAdditional, ans);
-            Console.WriteLine(query2);
+            
+                List<int> removedList = new List<int>();
+                List<int> addedList = new List<int>();
+                List<int> addedListAdditional = new List<int>();
+                Program.AddBlank(ref query1, ref removedList, ref addedList, ref addedListAdditional, ans);
+                Program.RemoveBlank(ref query1, removedList, addedListAdditional, ans);
+                
         }
     }
 }
