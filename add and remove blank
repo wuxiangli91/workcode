@@ -1,0 +1,153 @@
+using System;
+using System.Collections.Generic;
+
+
+namespace addblank
+{
+    class SlotIndexInfoV1
+    {
+        public int StartIndex;
+        public int EndIndex;
+        public SlotIndexInfoV1(int StartIndex, int EndIndex)
+        {
+            this.StartIndex = StartIndex;
+            this.EndIndex = EndIndex;
+        }
+    }
+    class Program
+    {
+        public static bool IsChinese(char c)
+        {
+            if (char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.OtherLetter)
+                return true;
+            else
+                return false;
+        }
+
+        public static void RemoveBlank(ref string query, List<int> removedList, List<int> addedList, List<int> addedListAdditional, List<SlotIndexInfoV1> slotIndexInfos)
+        {
+            string queryTmp = "";
+            for (int i = 0; i < query.Length; i++)
+            {
+                if (addedListAdditional.Contains(i))
+                {
+                    continue;
+                }
+                queryTmp += query[i];
+            }
+            query = queryTmp;
+
+            foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
+            {
+                int idxStart = 0, idxEnd = 0;
+                foreach (var idx in addedListAdditional)
+                {
+                    if (slotIndexInfo.StartIndex > idx) idxStart++;
+                    if (slotIndexInfo.EndIndex > idx) idxEnd++;
+                }
+                slotIndexInfo.StartIndex -= idxStart;
+                slotIndexInfo.EndIndex -= idxEnd;
+            }
+
+            queryTmp = "";
+            for (int i = 0; i < removedList.Count; i++)
+            {
+                queryTmp = query.Substring(0, removedList[i]) + " " + query.Substring(removedList[i], query.Length - removedList[i]);
+                foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
+                {
+                    if (slotIndexInfo.StartIndex >= removedList[i]) slotIndexInfo.StartIndex++;
+                    if (slotIndexInfo.EndIndex >= removedList[i]) slotIndexInfo.EndIndex++;
+                }
+
+                query = queryTmp;
+            }
+
+
+
+
+        }
+        public static void AddBlank(ref string query, ref List<int> removedList, ref List<int> addedList, ref List<int> addedListAdditional, List<SlotIndexInfoV1> slotIndexInfos)
+        {
+
+            string preQuery = "";
+            List<int> indexes = new List<int>();
+            List<int> indexes1 = new List<int>();
+            //remove redundant blank
+
+            for (int i = 0; i < query.Length; i++)
+            {
+               
+                if (query[i] == ' ' && (i - 1 >= 0 && i + 1 < query.Length && (!IsChinese(query[i + 1]) && query[i + 1] != ' ') && (!IsChinese(query[i - 1]) && query[i - 1] != ' ')) || query[i] != ' ')
+                    preQuery += query[i];
+                else
+                    removedList.Add(i);
+
+            }
+            query = preQuery;
+            foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
+            {
+                int idxStart = 0, idxEnd = 0;
+                foreach (var idx in removedList)
+                {
+                    if (slotIndexInfo.StartIndex > idx) idxStart++;
+                    if (slotIndexInfo.EndIndex > idx) idxEnd++;
+                }
+                slotIndexInfo.StartIndex -= idxStart;
+                slotIndexInfo.EndIndex -= idxEnd;
+            }
+           
+
+            //add blank
+            string queryBlank = "";
+            for (int i = 0; i < query.Length; i++)
+            {
+                if (i + 1 < query.Length && (IsChinese(query[i]) || (!IsChinese(query[i]) && IsChinese(query[i + 1]))))
+                {
+                    queryBlank += query[i] + " ";
+                    addedList.Add(i);
+                    addedListAdditional.Add(queryBlank.Length - 1);
+                }
+                else
+                    queryBlank += query[i];
+            }
+
+         
+
+            foreach (SlotIndexInfoV1 slotIndexInfo in slotIndexInfos)
+            {
+                int idxStart = 0, idxEnd = 0;
+                foreach (var idx in addedList)
+                {
+                    if (slotIndexInfo.StartIndex > idx) idxStart++;
+                    if (slotIndexInfo.EndIndex > idx) idxEnd++;
+                }
+                slotIndexInfo.StartIndex += idxStart;
+                slotIndexInfo.EndIndex += idxEnd;
+            }
+            query = queryBlank;
+        }
+        static void Main(string[] args)
+        {
+            string query1 = @"今天  北京天气  怎么样";
+            string query2 = @"today beijing天气啊 怎么样";
+            SlotIndexInfoV1 slot1 = new SlotIndexInfoV1(0, 1);
+            SlotIndexInfoV1 slot2 = new SlotIndexInfoV1(5, 6);
+            SlotIndexInfoV1 slot3 = new SlotIndexInfoV1(0, 4);
+            SlotIndexInfoV1 slot4 = new SlotIndexInfoV1(7, 13);
+            List<SlotIndexInfoV1> ans = new List<SlotIndexInfoV1>();
+            ans.Add(slot1);
+            ans.Add(slot2);
+            //ans.Add(slot3);
+            //ans.Add(slot4);
+
+            List<int> removedList = new List<int>();
+            List<int> addedList = new List<int>();
+            List<int> addedListAdditional = new List<int>();
+            //additionalSpace.Add(5);
+            //additionalSpace.Add(15);
+            Program.AddBlank(ref query1, ref removedList, ref addedList, ref addedListAdditional, ans);
+            Program.RemoveBlank(ref query1, removedList, addedList, addedListAdditional, ans);
+            Console.WriteLine(query2);
+        }
+    }
+}
