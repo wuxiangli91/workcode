@@ -87,11 +87,37 @@ def batch_generator(arr, n_seqs, n_steps):
             yield x, y
 
 class TextConverter(object):
-    def __init__(self, filePathInput,filePathOutput, max_vocab=5000, filename=None):
-        question_vocab = general_vocabulary_zhcn(filePathInput, filePathOutput, 1)
-        self.vocab = question_vocab
+    def __init__(self, text=None, max_vocab=5000, filename=None):
+        if filename is not None:
+            with open(filename, 'rb') as f:
+                self.vocab = pickle.load(f)
+        else:
+            vocab = set(text)
 
-        self.word_to_int_table = question_vocab
+            text=text.replace(" ","").replace("\n","").replace("\r","")
+
+            '''
+            segText = jieba.cut(text)
+            segText=set(segText)
+            text=segText
+            vocab=segText
+            '''
+            # max_vocab_process
+            vocab_count = {}
+            for word in vocab:
+                vocab_count[word] = 0
+            for word in text:
+                vocab_count[word] += 1
+            vocab_count_list = []
+            for word in vocab_count:
+                vocab_count_list.append((word, vocab_count[word]))
+            vocab_count_list.sort(key=lambda x: x[1], reverse=True)
+            if len(vocab_count_list) > max_vocab:
+                vocab_count_list = vocab_count_list[:max_vocab]
+            vocab = [x[0] for x in vocab_count_list]
+            self.vocab = vocab
+
+        self.word_to_int_table = {c: i for i, c in enumerate(self.vocab)}
         self.int_to_word_table = dict(enumerate(self.vocab))
 
     @property

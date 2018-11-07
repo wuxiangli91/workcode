@@ -28,10 +28,9 @@ tf.flags.DEFINE_string('checkpoint_path', 'model/baiduClean3/', 'checkpoint path
 tf.flags.DEFINE_string('start_string', '', 'use this string to start generating')
 tf.flags.DEFINE_integer('max_length', 1000, 'max length to generate')
 
-filePathInput=r'd:/data/lubinsplitinput.txt'
-filePathOutput=r'd:/data/lubinsplitoutput.txt'
-FLAGS.start_string = 's'
-converter = TextConverter(filePathInput, filePathOutput)
+
+FLAGS.start_string = FLAGS.start_string
+converter = TextConverter(filename=FLAGS.converter_path)
 if os.path.isdir(FLAGS.checkpoint_path):
     FLAGS.checkpoint_path =\
         tf.train.latest_checkpoint(FLAGS.checkpoint_path)
@@ -45,8 +44,8 @@ model.load(FLAGS.checkpoint_path)
 
 mystr =r'如果这五万对你来说很重要的话就不要轻易投'
 mystr1=r'如果这万说来五对要你重很的话就要轻不易投'
-mystr2=r'至于那几个英国人'
-mystr3=r'于至那国个英几人'
+mystr2=r'天刀团本怎么找队长老一有红圈就躲开'
+mystr3=r'天刀团本怎找么长队老一有就躲开红圈'
 mystr4=r'打开电视'
 mystr5=r'打开苹果'
 start = converter.text_to_arr(FLAGS.start_string)
@@ -54,7 +53,7 @@ start = converter.text_to_arr(FLAGS.start_string)
 filePath=r'd:/data/testrawsplit.txt'
 fileWrite=r'd:/data/testrawsplitWrite.txt'
 
-
+'''
 with codecs.open(filePath,encoding='utf-8') as f:
     with open(fileWrite, 'w', encoding='utf-8') as fw:
         data=f.read().split('\n')
@@ -82,11 +81,11 @@ with codecs.open(filePath,encoding='utf-8') as f:
                 fw.write("\n")
 
     print(cntCorrect*1.0/cnt)
-
+'''
 
 #arr = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr,converter)
 
-#arr = model.sample(FLAGS.max_length, start, converter.vocab_size)
+arr = model.sample(FLAGS.max_length, start, converter.vocab_size)
 arr1 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr,converter)
 arr2 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr1,converter)
 arr3 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr2,converter)
@@ -94,7 +93,7 @@ arr4 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr3,
 arr5 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr4,converter)
 arr6 = model.samplePredict(FLAGS.max_length, start, converter.vocab_size,mystr5,converter)
 
-#print(converter.arr_to_text(arr))
+print(converter.arr_to_text(arr))
 print(converter.arr_to_text(arr1))
 print(converter.arr_to_text(arr2))
 print(converter.arr_to_text(arr3))

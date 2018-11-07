@@ -33,6 +33,9 @@ tf.flags.DEFINE_integer('max_vocab', 200000, 'max char number')
 filePathInput=r'd:/data/lubinsplitinput.txt'
 filePathOutput=r'd:/data/lubinsplitoutput.txt'
 
+question_vocab=read_utils.general_vocabulary_zhcn(filePathInput,filePathOutput,1)
+input_data=read_utils.seq2id_train(question_vocab,filePathInput)
+output_data=read_utils.seq2id_train(question_vocab,filePathOutput)
 
 
 model_path = os.path.join('model', FLAGS.name)
@@ -46,9 +49,6 @@ converter.save_to_file(os.path.join(model_path, 'converter.pkl'))
 arr = converter.text_to_arr(text)
 g = batch_generator(arr, FLAGS.num_seqs, FLAGS.num_steps)
 '''
-input_data=read_utils.seq2id_train(converter.vocab,filePathInput)
-output_data=read_utils.seq2id_train(converter.vocab,filePathOutput)
-
 g=read_utils.batch_iter(input_data,output_data,FLAGS.num_seqs,FLAGS.num_steps)
 
 print(converter.vocab_size)
