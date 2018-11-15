@@ -1,0 +1,48 @@
+//Script GUID:1bcfeae3-ccde-4d4f-b526-06db25a4d2a0
+//Used for tracking history
+
+
+searchlog = 
+    EXTRACT question : string,
+            description : string,
+            answer: string
+    FROM "/local/users/wuxiangl/RegDatabaiduzhidao.tsv"
+    USING DefaultTextExtractor();
+
+T1 =
+    SELECT  Splitquestion AS question
+    FROM searchlog
+    CROSS APPLY question.Split(';') AS  Splitquestion
+                                    
+         ; 
+        
+
+T2 =
+    SELECT  Splitdescription AS description
+    FROM searchlog
+    CROSS APPLY description.Split(';') AS  Splitdescription
+                                    
+         ; 
+
+
+T3 =
+    SELECT  Splitanswer AS answer
+    FROM searchlog
+    CROSS APPLY answer.Split(';') AS  Splitanswer
+                                    
+         ;
+
+T4 =
+    SELECT *
+    FROM T1
+    UNION
+    SELECT *
+    FROM T2
+    UNION
+    SELECT
+        *
+    FROM T3;
+         
+OUTPUT T4
+    TO "/local/users/wuxiangl/baidurowsNumber.tsv"
+      USING DefaultTextOutputter();
