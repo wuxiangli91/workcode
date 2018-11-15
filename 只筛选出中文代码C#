@@ -1,0 +1,26 @@
+using Microsoft.SCOPE.Types;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using ScopeRuntime;
+using System.Text.RegularExpressions;
+
+public static class MyHelper
+{
+    public static string extractChinese(string str)
+    {
+        MatchCollection matchCol = Regex.Matches(str, "[\u4e00-\u9fa5]+");
+        string mytmp = "";
+        List<string> result = new List<string>();
+        if (matchCol.Count > 0)
+        {
+            for (int i = 0; i < matchCol.Count - 1; i++)
+            {
+                mytmp = mytmp + (matchCol[i].Value) + ";";
+            }
+            mytmp += matchCol[matchCol.Count - 1].Value;
+        }
+        return mytmp;
+    }
+}
