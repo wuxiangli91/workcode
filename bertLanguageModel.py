@@ -1,4 +1,4 @@
-﻿# coding=utf-8
+# coding=utf-8
 # Copyright 2018 The Google AI Language Team Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ flags.DEFINE_string("vocab_file", "/home/wxl/bertProject/chinese_L-12_H-768_A-12
                     "The vocabulary file that the BERT model was trained on.")
 
 flags.DEFINE_string(
-    "output_dir", "/home/wxl/bertProject/bertTextClassification/bertLMv3/",
+    "output_dir", "/home/wxl/bertProject/bertTextClassification/bertLMv5FinalV1/",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
@@ -71,12 +71,12 @@ flags.DEFINE_integer(
     "Sequences longer than this will be truncated, and sequences shorter "
     "than this will be padded.")
 
-flags.DEFINE_bool("do_train", True, "Whether to run training.")
+flags.DEFINE_bool("do_train", False, "Whether to run training.")
 
 flags.DEFINE_bool("do_eval", False, "Whether to run eval on the dev set.")
 
 flags.DEFINE_bool(
-    "do_predict", False,
+    "do_predict", True,
     "Whether to run the model in inference mode on the test set.")
 
 flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
@@ -85,9 +85,9 @@ flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
 flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
 
-flags.DEFINE_float("learning_rate", 3e-6, "The 2e-5 initial learning rate for Adam.")
+flags.DEFINE_float("learning_rate", 3e-5, "The 2e-5 initial learning rate for Adam.")
 
-flags.DEFINE_float("num_train_epochs", 40.0,
+flags.DEFINE_float("num_train_epochs", 150.0,
                    "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
@@ -384,14 +384,14 @@ class MultiClassProcessor(DataProcessor):
   def get_train_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+        self._read_tsv(os.path.join(data_dir, "train.txt")), "train")
         #self._read_tsv("/home/wxl/PycharmProjects/slotTag/data/balanceData/train.txt"), "train")
 
   def get_dev_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
         #self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
-        self._read_tsv("/home/wxl/PycharmProjects/slotTag/data/mydata/finalDev.txt"), "dev")
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
   def get_test_examples(self, data_dir):
     """See base class."""
@@ -410,9 +410,11 @@ class MultiClassProcessor(DataProcessor):
     examples = []
     for (i, line) in enumerate(lines):
       guid = "%s-%s" % (set_type, i)
-      if set_type == "test":
-        text_a = tokenization.convert_to_unicode(line[-1])
-        label = line[:len(line)-1]
+      if set_type == "test" or set_type=='dev':
+        text_a = tokenization.convert_to_unicode(line[0])
+        label = tokenization.convert_to_unicode(line[1])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
       else:
           if i%2==0:
             text_a = tokenization.convert_to_unicode(line[0])
@@ -550,14 +552,14 @@ def file_based_convert_examples_to_features(
   """Convert a set of `InputExample`s to a TFRecord file."""
 
   writer = tf.python_io.TFRecordWriter(output_file)
-
+  featuresLists=[]
   for (ex_index, example) in enumerate(examples):
     if ex_index % 10000 == 0:
       tf.logging.info("Writing example %d of %d" % (ex_index, len(examples)))
 
     feature = convert_single_example(ex_index, example, label_list,
                                      max_seq_length, tokenizer)
-
+    featuresLists.append(feature)
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
       return f
@@ -573,6 +575,7 @@ def file_based_convert_examples_to_features(
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
   writer.close()
+  return featuresLists
 
 
 def file_based_input_fn_builder(input_file, seq_length, is_training,
@@ -699,13 +702,15 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
     one_hot_labels=one_hot_labels*weights
     '''
 
-    losses = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    lossesPre = tf.nn.sparse_softmax_cross_entropy_with_logits(
         logits=logits, labels=labels)
-    losses = tf.boolean_mask(losses, input_mask)
+    losses = tf.boolean_mask(lossesPre, input_mask)
     loss = tf.reduce_mean(losses)
     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+    labels_pred = tf.cast(tf.argmax(logits, axis=-1),
+                               tf.int32)
 
-    return (loss, per_example_loss, logits, probabilities)
+    return (loss, per_example_loss, logits, probabilities,labels_pred,lossesPre)
 
 
 def addWeighLoss(fileWeights,one_hot_labels,log_probs):
@@ -747,7 +752,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    (total_loss, per_example_loss, logits, probabilities) = create_model(
+    (total_loss, per_example_loss, logits, probabilities,labels_pred,losses) = create_model(
         bert_config, is_training, input_ids, input_mask, segment_ids, label_id,
         num_labels, use_one_hot_embeddings)
 
@@ -815,7 +820,8 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     else:
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
-          predictions={"probabilities": probabilities},
+          loss=total_loss,
+          predictions={"losses": losses,"labels_pred":labels_pred,"per_example_loss":per_example_loss},
           scaffold_fn=scaffold_fn)
     return output_spec
 
@@ -1041,14 +1047,13 @@ def main(_):
         writer.write("%s = %s\n" % (key, str(result[key])))
 
   if FLAGS.do_predict:
-    predict_examplesPre = processor.get_test_examples(FLAGS.data_dir)
+    predict_examples = processor.get_test_examples(FLAGS.data_dir)
     predict_examples=[]
-    labelsPre=[]
-    for example in predict_examplesPre:
-        labelsPre.append(example.label)
-        example.label=example.label[0]
-        predict_examples.append(example)
-
+    predict_examples.append(
+          InputExample(guid="ttmp_1", text_a="<s> 我 爱 吃 大米", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    predict_examples.append(
+        InputExample(guid="ttmp_2", text_a="<s> 习近平 计划 Location 点去 美国", text_b=None,
+                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
     num_actual_predict_examples = len(predict_examples)
     if FLAGS.use_tpu:
       # TPU requires a fixed batch size for all batches, therefore the number
@@ -1059,7 +1064,7 @@ def main(_):
         predict_examples.append(PaddingInputExample())
 
     predict_file = os.path.join(FLAGS.output_dir, "predict.tf_record")
-    file_based_convert_examples_to_features(predict_examples, label_list,
+    myfeatures=file_based_convert_examples_to_features(predict_examples, label_list,
                                             FLAGS.max_seq_length, tokenizer,
                                             predict_file)
 
@@ -1082,29 +1087,41 @@ def main(_):
     with tf.gfile.GFile(output_predict_file, "w") as writer:
       num_written_lines = 0
       tf.logging.info("***** Predict results *****")
-      cnt=0
-      for (i, prediction) in enumerate(result):
-        probabilities = prediction["probabilities"]
-        maxIdx = probabilities.tolist().index(max(probabilities.tolist()))
-        probabilitiesLists=probabilities.tolist()
-        top2Number = sorted(range(len(probabilitiesLists)), key=lambda i: probabilitiesLists[i])[-3:]
 
-        for idx in top2Number:
-            if label_list[idx] in labelsPre[i]:
-                cnt+=1
-                break
+      for (x, prediction) in enumerate(result):
+          #probabilities = prediction["probabilities"]
+          totalExamples=len(myfeatures)
+          for i in range(totalExamples):
+              lentmp=0
+              for item in myfeatures[i].input_mask:
+                  if item ==1:
+                      lentmp+=1
+
+              print(predict_examples[i].text_a)
 
 
-        if i >= num_actual_predict_examples:
-          break
-        output_line = "\t".join(
-            str(class_probability)
-            for class_probability in probabilities) + "\n"
-        writer.write(output_line)
-        num_written_lines += 1
-    acc=cnt*1.0/num_written_lines
-    print("========accuracy============ :",acc)
-    assert num_written_lines == num_actual_predict_examples
+
+              cnt=0
+              outputIds=[]
+              for item in prediction['labels_pred'][i]:
+                  outputIds.append(item)
+                  cnt+=1
+                  if cnt==lentmp:
+                      break
+              myans=tokenizer.convert_ids_to_tokens(outputIds)
+              print(myans)
+
+              tmploss = 0
+              cnt = 0
+              for item in prediction['losses'][i]:
+                  tmploss += item
+                  cnt += 1
+                  if cnt == lentmp:
+                      break
+
+              lossFinal = tmploss / lentmp
+              print(lossFinal)
+
 
 
 if __name__ == "__main__":
