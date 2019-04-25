@@ -384,7 +384,7 @@ class MultiClassProcessor(DataProcessor):
   def get_train_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train.txt")), "train")
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
         #self._read_tsv("/home/wxl/PycharmProjects/slotTag/data/balanceData/train.txt"), "train")
 
   def get_dev_examples(self, data_dir):
@@ -410,7 +410,7 @@ class MultiClassProcessor(DataProcessor):
     examples = []
     for (i, line) in enumerate(lines):
       guid = "%s-%s" % (set_type, i)
-      if set_type == "test" or set_type=='dev':
+      if set_type == "test":
         text_a = tokenization.convert_to_unicode(line[0])
         label = tokenization.convert_to_unicode(line[1])
         examples.append(
@@ -796,26 +796,25 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
           scaffold_fn=scaffold_fn)
     elif mode == tf.estimator.ModeKeys.EVAL:
 
-      def metric_fn(per_example_loss, label_id, logits, is_real_example):
+      def metric_fn(per_example_loss, label_id, logits, is_real_example,losses,total_loss):
         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
         accuracy = tf.metrics.accuracy(
             labels=label_id, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
+        loss=tf.metrics.mean(values=[total_loss])
         return {
             "eval_accuracy": accuracy,
             "eval_loss": loss,
         }
 
       eval_metrics = (metric_fn,
-                      [per_example_loss, label_id, logits, is_real_example])
+                      [per_example_loss, label_id, logits, is_real_example,losses,total_loss])
 
-      logging_hook_eval = tf.estimator.LoggingTensorHook({"loss_eval": total_loss}, every_n_iter=100)
 
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           loss=total_loss,
           eval_metrics=eval_metrics,
-          evaluation_hooks=[logging_hook_eval],
           scaffold_fn=scaffold_fn)
     else:
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
@@ -1050,10 +1049,21 @@ def main(_):
     predict_examples = processor.get_test_examples(FLAGS.data_dir)
     predict_examples=[]
     predict_examples.append(
-          InputExample(guid="ttmp_1", text_a="<s> 我 爱 吃 大米", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+          InputExample(guid="ttmp_1", text_a="<s> 小明 爱 吃 大米", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
     predict_examples.append(
-        InputExample(guid="ttmp_2", text_a="<s> 习近平 计划 Location 点去 美国", text_b=None,
+        InputExample(guid="ttmp_2", text_a="<s> 李红 爱 吃 大米", text_b=None,
                      label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    predict_examples.append(
+        InputExample(guid="ttmp_3", text_a="<s> 政府 爱 吃 大米", text_b=None,
+                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    predict_examples.append(
+        InputExample(guid="ttmp_4", text_a="<s> 清华大学 爱 吃 大米", text_b=None,
+                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+
+    predict_examples.append(
+        InputExample(guid="ttmp_4", text_a="<s> 中华人名共和国 爱 吃 大米", text_b=None,
+                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+
     num_actual_predict_examples = len(predict_examples)
     if FLAGS.use_tpu:
       # TPU requires a fixed batch size for all batches, therefore the number
