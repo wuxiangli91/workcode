@@ -25,7 +25,7 @@ import modeling
 import optimization
 import tokenization
 import tensorflow as tf
-
+import numpy as np
 
 filePathLabel="/home/wxl/PycharmProjects/slotTag/data/tags.txt"
 #fileWeights= "/home/wxl/bertProject/bertTextClassification/data/balanceData/weights.tsv"
@@ -51,7 +51,7 @@ flags.DEFINE_string("vocab_file", "/home/wxl/bertProject/chinese_L-12_H-768_A-12
                     "The vocabulary file that the BERT model was trained on.")
 
 flags.DEFINE_string(
-    "output_dir", "/home/wxl/bertProject/bertTextClassification/bertLMv5FinalV1/",
+    "output_dir", "/home/wxl/bertProject/bertTextClassification/bertLMv5FinalMultiLanguageV9/",
     "The output directory where the model checkpoints will be written.")
 
 ## Other parameters
@@ -83,7 +83,7 @@ flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
-flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
+flags.DEFINE_integer("predict_batch_size", 30, "Total batch size for predict.")
 
 flags.DEFINE_float("learning_rate", 3e-5, "The 2e-5 initial learning rate for Adam.")
 
@@ -559,7 +559,8 @@ def file_based_convert_examples_to_features(
 
     feature = convert_single_example(ex_index, example, label_list,
                                      max_seq_length, tokenizer)
-    featuresLists.append(feature)
+    if True:
+        featuresLists.append(feature)
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
       return f
@@ -1047,22 +1048,52 @@ def main(_):
 
   if FLAGS.do_predict:
     predict_examples = processor.get_test_examples(FLAGS.data_dir)
-    predict_examples=[]
-    predict_examples.append(
-          InputExample(guid="ttmp_1", text_a="<s> 小明 爱 吃 大米", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
-    predict_examples.append(
-        InputExample(guid="ttmp_2", text_a="<s> 李红 爱 吃 大米", text_b=None,
-                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
-    predict_examples.append(
-        InputExample(guid="ttmp_3", text_a="<s> 政府 爱 吃 大米", text_b=None,
-                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
-    predict_examples.append(
-        InputExample(guid="ttmp_4", text_a="<s> 清华大学 爱 吃 大米", text_b=None,
-                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
 
-    predict_examples.append(
-        InputExample(guid="ttmp_4", text_a="<s> 中华人名共和国 爱 吃 大米", text_b=None,
-                     label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    sentences = [
+        'Location.City',
+        'Location.Country',
+        'Location.Province',
+        'Location.Restaurant',
+        'Location.Structure.Airport',
+        'Location.Structure.Hospital',
+        'Location',
+        'Organization.Company',
+        'Organization.Education.Institution',
+        'Organization.Government',
+        'Organization.Sports.Team',
+        'Organization',
+        'Other.Color',
+        'Other.Currency',
+        'Other.Event.Festival',
+        'Other.Food',
+        'Other.Product.Car',
+        'Other.Product',
+        'Other.Time',
+        'Other.Title',
+        'Person.Artist.Actor',
+        'Person.Artist.Director',
+        'Person.Artist.Singer',
+        'Person.Athlete',
+        'Person.Author',
+        'Person.Politician',
+        'Person'
+    ]
+
+    predict_examples=[]
+    sent1="<s> 傻逼"
+    sent2="摄入 的 卡路里有多少"
+    for type in sentences:
+        sentenceTest=sent1+" "+type+" "+sent2
+
+        predict_examples.append(
+            InputExample(guid="ttmp_1", text_a=sentenceTest, text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    # predict_examples.append(
+    #              InputExample(guid="ttmp_1", text_a="<s> 傻逼", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    #
+    # predict_examples.append(
+    #     InputExample(guid="ttmp2", text_a="<s> 你妈", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
+    # predict_examples.append(
+    #     InputExample(guid="ttmp_232", text_a="<s> 老子心情不好", text_b=None, label="警方 之所以 锁定 Location 寻找 嫌疑人 <s>"))
 
     num_actual_predict_examples = len(predict_examples)
     if FLAGS.use_tpu:
@@ -1094,6 +1125,7 @@ def main(_):
     result = estimator.predict(input_fn=predict_input_fn)
 
     output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
+    ans=[]
     with tf.gfile.GFile(output_predict_file, "w") as writer:
       num_written_lines = 0
       tf.logging.info("***** Predict results *****")
@@ -1130,8 +1162,11 @@ def main(_):
                       break
 
               lossFinal = tmploss / lentmp
-              print(lossFinal)
-
+              print(lossFinal,sentences[i])
+              ans.append([sentences[i], np.exp(lossFinal)])
+    ans.sort(key=lambda x:x[1])
+    print("====language model bert =====")
+    print(ans)
 
 
 if __name__ == "__main__":
